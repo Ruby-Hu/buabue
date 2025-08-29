@@ -79,10 +79,11 @@ function initCannon() {
         shape: boxShape,
         material: new CANNON.Material({ 
             friction: 0.3,
-            restitution: 0.7
+            restitution: 0.8
         })
     });
     cube1Body.position.set(-2, 5, 0);
+    cube1Body.angularDamping = 0.2;
     world.addBody(cube1Body);
     
     cube2Body = new CANNON.Body({
@@ -90,20 +91,23 @@ function initCannon() {
         shape: boxShape,
         material: new CANNON.Material({ 
             friction: 0.3,
-            restitution: 0.7
+            restitution: 0.8
         })
     });
     cube2Body.position.set(2, 5, 0);
+    cube2Body.angularDamping = 0.2;
     world.addBody(cube2Body);
     
+
+
     // Create physics floor
     const floorShape = new CANNON.Plane();
     floorBody = new CANNON.Body({
         mass: 0, // Static
         shape: floorShape,
         material: new CANNON.Material({ 
-            friction: 0.4,
-            restitution: 0.3
+            friction: 0.8,
+            restitution: 0.6
         })
     });
     floorBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
@@ -117,6 +121,8 @@ function initCannon() {
         { friction: 0.3, restitution: 0.7 }
     );
     world.addContactMaterial(cubeFloorContact);
+    
+    
 }
 
 function animate() {
@@ -140,8 +146,14 @@ function animate() {
 function onMouseClick() {
     world.gravity.set(0, -9.82, 0);
     // Apply random angular impulses to make cubes spin
-    cube1Body.angularVelocity.set(2, 1, 2);
-    cube2Body.angularVelocity.set(-1, -2, -3);
+    const randomX = (Math.random() - 0.5) * 3;
+    const randomY = (Math.random() - 0.5) * 3;
+    const randomZ = (Math.random() - 0.5) * 3;
+    cube1Body.angularVelocity.set(randomX, randomY, randomZ);
+    const randomX2 = (Math.random() - 0.5) * 3;
+    const randomY2 = (Math.random() - 0.5) * 3;
+    const randomZ2 = (Math.random() - 0.5) * 3;
+    cube2Body.angularVelocity.set(randomX2, randomY2, randomZ2);
 }
 
 function onWindowResize() {
