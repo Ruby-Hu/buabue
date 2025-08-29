@@ -1,97 +1,151 @@
 import * as THREE from 'three';
+import * as CANNON from 'cannon-es';
 
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+// Global variables
+let scene, camera, renderer;
+let cube1, cube2, floor;
+let world, cube1Body, cube2Body, floorBody;
 
-const renderer = new THREE.WebGLRenderer({ 
-    canvas: document.getElementById('three-canvas'),
-    antialias: true 
-});
-renderer.setSize(window.innerWidth, window.innerHeight);
+// Initialize everything
+initThree();
+initCannon();
+animate();
 
+function initThree() {
+    // Scene
+    scene = new THREE.Scene();
+    
+    // Camera
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 10, 0);
+    camera.lookAt(0, 0, 0);
+    
+    // Renderer
+    renderer = new THREE.WebGLRenderer({ 
+        canvas: document.getElementById('three-canvas'),
+        antialias: true 
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    
+    // Create cubes
+    const boxWidth = 1, boxHeight = 1, boxDepth = 1;
+    const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
+    const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
+    
+    cube1 = new THREE.Mesh(geometry, cubeMaterial);
+    cube1.position.set(-2, 5, 0);
+    scene.add(cube1);
+    
+    cube2 = new THREE.Mesh(geometry, cubeMaterial);
+    cube2.position.set(2, 5, 0);
+    scene.add(cube2);
+    
+    // Create floor
+    const floorGeometry = new THREE.PlaneGeometry(window.innerWidth, window.innerHeight);
+    const floorMaterial = new THREE.MeshPhongMaterial({ color: 0x808080 });
+    floor = new THREE.Mesh(floorGeometry, floorMaterial);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -2;
+    scene.add(floor);
+    
+    // Lighting
+    const light = new THREE.DirectionalLight(0xFFFFFF, 3);
+    light.position.set(-1, 2, 4);
+    scene.add(light);
+    
+    // Event listeners
+    document.addEventListener('click', onMouseClick);
+    window.addEventListener('resize', onWindowResize);
+}
 
-const boxWidth = 1;
-const boxHeight = 1;
-const boxDepth = 1;
-const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
-const cubeMaterial = new THREE.MeshPhongMaterial( { color: 0x00ff00 } );
-const cube1 = new THREE.Mesh(geometry, cubeMaterial);
-cube1.position.y = 5;
-cube1.position.x = -2; // Position to the left
-scene.add(cube1);
-
-const cube2 = new THREE.Mesh(geometry, cubeMaterial);
-cube2.position.y = 5;
-cube2.position.x = 2; // Position to the right
-scene.add(cube2);
-
-// Add floor
-const floorGeometry = new THREE.PlaneGeometry(window.innerWidth, window.innerHeight); // 10x10 units wide
-const floorMaterial = new THREE.MeshPhongMaterial({ color: 0x808080 }); // Gray color
-const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-floor.rotation.x = -Math.PI / 2; // Rotate to be horizontal
-floor.position.y = -2; // Position below the cube
-scene.add(floor);
-
-// Add physics variables
-let cube1Velocity = 0;
-let cube2Velocity = 0;
-let cube1RotationX = 0;
-let cube1RotationY = 0;
-let cube1RotationZ = 0;
-let cube2RotationX = 0;
-let cube2RotationY = 0;
-let cube2RotationZ = 0;
-const gravity = 0.01;
-const floorY = -2;
-let cube1Falling = false;
-let cube2Falling = false;
-const bounceFactor = 0.7; // How much energy is retained after bounce
-const friction = 0.98; // Air resistance
-
-camera.position.set(0, 10, 0); // X=0, Y=10, Z=0
-camera.lookAt(0, 0, 0);
-
-// Add mouse click event
-document.addEventListener('click', () => {
-    cube1Falling = true;
-    cube2Falling = true;
-});
+function initCannon() {
+    // Debug: check what we imported
+    console.log('CANNON:', CANNON);
+    console.log('CANNON.World:', CANNON.World);
+    
+    // Create physics world
+    world = new CANNON.World({
+        gravity: new CANNON.Vec3(0, 0, 0)
+    });
+    
+    console.log('World created:', world);
+    console.log('World methods:', Object.getOwnPropertyNames(world));
+    
+    // Create physics bodies for cubes
+    const boxShape = new CANNON.Box(new CANNON.Vec3(0.5, 0.5, 0.5));
+    
+    cube1Body = new CANNON.Body({
+        mass: 1,
+        shape: boxShape,
+        material: new CANNON.Material({ 
+            friction: 0.3,
+            restitution: 0.7
+        })
+    });
+    cube1Body.position.set(-2, 5, 0);
+    world.addBody(cube1Body);
+    
+    cube2Body = new CANNON.Body({
+        mass: 1,
+        shape: boxShape,
+        material: new CANNON.Material({ 
+            friction: 0.3,
+            restitution: 0.7
+        })
+    });
+    cube2Body.position.set(2, 5, 0);
+    world.addBody(cube2Body);
+    
+    // Create physics floor
+    const floorShape = new CANNON.Plane();
+    floorBody = new CANNON.Body({
+        mass: 0, // Static
+        shape: floorShape,
+        material: new CANNON.Material({ 
+            friction: 0.4,
+            restitution: 0.3
+        })
+    });
+    floorBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+    floorBody.position.set(0, -2, 0);
+    world.addBody(floorBody);
+    
+    // Create contact material
+    const cubeFloorContact = new CANNON.ContactMaterial(
+        cube1Body.material,
+        floorBody.material,
+        { friction: 0.3, restitution: 0.7 }
+    );
+    world.addContactMaterial(cubeFloorContact);
+}
 
 function animate() {
-    // Only apply gravity if falling
-    // Handle cube1 physics
-    if (cube1Falling) {
-        cube1Velocity += gravity;
-        cube1.position.y -= cube1Velocity;
-        
-        if (cube1.position.y <= floorY + 0.5) {
-            cube1.position.y = floorY + 0.5;
-            cube1Velocity = 0;
-            cube1Falling = false;
-        }
-    }
+    // Step physics simulation
+    world.step(1/60);
     
-    // Handle cube2 physics
-    if (cube2Falling) {
-        cube2Velocity += gravity;
-        cube2.position.y -= cube2Velocity;
-        
-        if (cube2.position.y <= floorY + 0.5) {
-            cube2.position.y = floorY + 0.5;
-            cube2Velocity = 0;
-            cube2Falling = false;
-        }
-    }
-
+    // Sync physics to visual objects
+    cube1.position.copy(cube1Body.position);
+    cube1.quaternion.copy(cube1Body.quaternion);
     
-    renderer.render( scene, camera );
-  }
-  renderer.setAnimationLoop( animate );
+    cube2.position.copy(cube2Body.position);
+    cube2.quaternion.copy(cube2Body.quaternion);
+    
+    // Render
+    renderer.render(scene, camera);
+    
+    // Continue animation loop
+    requestAnimationFrame(animate);
+}
 
+function onMouseClick() {
+    world.gravity.set(0, -9.82, 0);
+    // Apply random angular impulses to make cubes spin
+    cube1Body.angularVelocity.set(2, 1, 2);
+    cube2Body.angularVelocity.set(-1, -2, -3);
+}
 
-const color = 0xFFFFFF;
-const intensity = 3;
-const light = new THREE.DirectionalLight(color, intensity);
-light.position.set(-1, 2, 4);
-scene.add(light);
+function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+}
