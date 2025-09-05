@@ -1,10 +1,13 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 // Global variables
 let scene, camera, renderer;
-let cube1, cube2, floor;
-let world, cube1Body, cube2Body, floorBody;
+let bue1, bue2, floor;
+let world, bue1Body, bue2Body, floorBody;
+let modelsLoaded = false;
+let physicsVisuals = []; // Add this for physics visualization
 
 // Initialize everything
 initThree();
@@ -17,7 +20,7 @@ function initThree() {
     
     // Camera
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 10, 0);
+    camera.position.set(0, 0, -50);
     camera.lookAt(0, 0, 0);
     
     // Renderer
@@ -27,30 +30,19 @@ function initThree() {
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
     
-    // Create cubes
-    const boxWidth = 1, boxHeight = 1, boxDepth = 1;
-    const geometry = new THREE.BoxGeometry(boxWidth, boxHeight, boxDepth);
-    const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
-    
-    cube1 = new THREE.Mesh(geometry, cubeMaterial);
-    cube1.position.set(-2, 5, 0);
-    scene.add(cube1);
-    
-    cube2 = new THREE.Mesh(geometry, cubeMaterial);
-    cube2.position.set(2, 5, 0);
-    scene.add(cube2);
+    createObjects();
     
     // Create floor
     const floorGeometry = new THREE.PlaneGeometry(window.innerWidth, window.innerHeight);
     const floorMaterial = new THREE.MeshPhongMaterial({ color: 0x808080 });
     floor = new THREE.Mesh(floorGeometry, floorMaterial);
     floor.rotation.x = -Math.PI / 2;
-    floor.position.y = -2;
+    floor.position.y = -20;
     scene.add(floor);
     
     // Lighting
     const light = new THREE.DirectionalLight(0xFFFFFF, 3);
-    light.position.set(-1, 2, 4);
+    light.position.set(2, 2, -4);
     scene.add(light);
     
     // Event listeners
@@ -58,47 +50,50 @@ function initThree() {
     window.addEventListener('resize', onWindowResize);
 }
 
-function initCannon() {
-    // Debug: check what we imported
-    console.log('CANNON:', CANNON);
-    console.log('CANNON.World:', CANNON.World);
+function createObjects() {
+    const loader = new GLTFLoader();
     
+    loader.load(
+        '/bue/bue.glb',
+        function (gltf) {
+            const model = gltf.scene;
+            
+            // Create first object
+            bue1 = model.clone();
+            bue1.position.set(-2, 10, -5);
+            bue1.scale.set(0.1, 0.1, 0.1);
+            scene.add(bue1);
+            
+            // Create second object
+            bue2 = model.clone();
+            bue2.position.set(2, 10, -5);
+            bue2.scale.set(0.1, 0.1, 0.1);
+            scene.add(bue2);
+
+            modelsLoaded = true;
+            animate();
+
+        },
+        function (progress) {
+            console.log('Loading progress:', progress);
+        },
+        function (error) {
+            console.error('Error loading model:', error);
+        }
+    );
+
+    
+}
+
+function initCannon() {
     // Create physics world
     world = new CANNON.World({
         gravity: new CANNON.Vec3(0, 0, 0)
     });
     
-    console.log('World created:', world);
-    console.log('World methods:', Object.getOwnPropertyNames(world));
+    // Create physics bodies (easily swappable)
+    createPhysicsBodies();
     
-    // Create physics bodies for cubes
-    const boxShape = new CANNON.Box(new CANNON.Vec3(0.5, 0.5, 0.5));
-    
-    cube1Body = new CANNON.Body({
-        mass: 1,
-        shape: boxShape,
-        material: new CANNON.Material({ 
-            friction: 0.3,
-            restitution: 0.8
-        })
-    });
-    cube1Body.position.set(-2, 5, 0);
-    cube1Body.angularDamping = 0.2;
-    world.addBody(cube1Body);
-    
-    cube2Body = new CANNON.Body({
-        mass: 1,
-        shape: boxShape,
-        material: new CANNON.Material({ 
-            friction: 0.3,
-            restitution: 0.8
-        })
-    });
-    cube2Body.position.set(2, 5, 0);
-    cube2Body.angularDamping = 0.2;
-    world.addBody(cube2Body);
-    
-
 
     // Create physics floor
     const floorShape = new CANNON.Plane();
@@ -111,12 +106,12 @@ function initCannon() {
         })
     });
     floorBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
-    floorBody.position.set(0, -2, 0);
+    floorBody.position.set(0, -20, 0);  // Match visual floor position
     world.addBody(floorBody);
     
     // Create contact material
     const cubeFloorContact = new CANNON.ContactMaterial(
-        cube1Body.material,
+        bue1Body.material,
         floorBody.material,
         { friction: 0.3, restitution: 0.7 }
     );
@@ -125,16 +120,79 @@ function initCannon() {
     
 }
 
+function createPhysicsBodies() {
+    const boxShape = new CANNON.Box(new CANNON.Vec3(0.4, 0.25, 0.4));
+    
+    bue1Body = new CANNON.Body({
+        mass: 1,
+        shape: boxShape,
+        material: new CANNON.Material({ 
+            friction: 0.3,
+            restitution: 0.8
+        })
+    });
+
+    bue1Body.position.set(-2, 10, -5);
+    bue1Body.angularDamping = 0.2;
+    world.addBody(bue1Body);
+    
+    // Create visual representation of physics body
+    const physicsBox1 = new THREE.BoxGeometry(0.8, 0.5, 0.8); // 2x the boxShape dimensions
+    const physicsMaterial1 = new THREE.MeshBasicMaterial({ 
+        color: 0xff0000, 
+        wireframe: true,
+        transparent: true,
+        opacity: 0.5
+    });
+    const physicsVisual1 = new THREE.Mesh(physicsBox1, physicsMaterial1);
+    physicsVisuals.push(physicsVisual1);
+    scene.add(physicsVisual1);
+    
+    bue2Body = new CANNON.Body({
+        mass: 1,
+        shape: boxShape,
+        material: new CANNON.Material({ 
+            friction: 0.3,
+            restitution: 0.8
+        })
+    });
+    
+    bue2Body.position.set(2, 10, -5);
+    bue2Body.angularDamping = 0.2;
+    world.addBody(bue2Body);
+    
+    // Create visual representation of physics body
+    const physicsBox2 = new THREE.BoxGeometry(0.8, 0.5, 0.8);
+    const physicsMaterial2 = new THREE.MeshBasicMaterial({ 
+        color: 0x00ff00, 
+        wireframe: true,
+        transparent: true,
+        opacity: 0.5
+    });
+    const physicsVisual2 = new THREE.Mesh(physicsBox2, physicsMaterial2);
+    physicsVisuals.push(physicsVisual2);
+    scene.add(physicsVisual2);
+}
+
 function animate() {
+    if (!modelsLoaded) return;
+    
     // Step physics simulation
     world.step(1/60);
     
     // Sync physics to visual objects
-    cube1.position.copy(cube1Body.position);
-    cube1.quaternion.copy(cube1Body.quaternion);
+    bue1.position.copy(bue1Body.position);
+    bue1.quaternion.copy(bue1Body.quaternion);
     
-    cube2.position.copy(cube2Body.position);
-    cube2.quaternion.copy(cube2Body.quaternion);
+    bue2.position.copy(bue2Body.position);
+    bue2.quaternion.copy(bue2Body.quaternion);
+    
+    // Sync physics visuals
+    physicsVisuals[0].position.copy(bue1Body.position);
+    physicsVisuals[0].quaternion.copy(bue1Body.quaternion);
+    
+    physicsVisuals[1].position.copy(bue2Body.position);
+    physicsVisuals[1].quaternion.copy(bue2Body.quaternion);
     
     // Render
     renderer.render(scene, camera);
@@ -149,11 +207,11 @@ function onMouseClick() {
     const randomX = (Math.random() - 0.5) * 3;
     const randomY = (Math.random() - 0.5) * 3;
     const randomZ = (Math.random() - 0.5) * 3;
-    cube1Body.angularVelocity.set(randomX, randomY, randomZ);
+    bue1Body.angularVelocity.set(randomX, randomY, randomZ);
     const randomX2 = (Math.random() - 0.5) * 3;
     const randomY2 = (Math.random() - 0.5) * 3;
     const randomZ2 = (Math.random() - 0.5) * 3;
-    cube2Body.angularVelocity.set(randomX2, randomY2, randomZ2);
+    bue2Body.angularVelocity.set(randomX2, randomY2, randomZ2);
 }
 
 function onWindowResize() {
