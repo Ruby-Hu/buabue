@@ -9,6 +9,15 @@ let world, bue1Body, bue2Body, floorBody;
 let modelsLoaded = false;
 let physicsVisuals = []; // Add this for physics visualization
 
+const bue1StartPos = { x: 3, y: 8, z: 0 };
+const bue2StartPos = { x: -3, y: 8, z: 0 };
+
+const physicsBoxDimensions = { 
+    width: 2,
+    height: 0.1,
+    depth: 3
+};
+
 // Initialize everything
 initThree();
 initCannon();
@@ -20,7 +29,7 @@ function initThree() {
     
     // Camera
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 0, -50);
+    camera.position.set(0, 40, 0);
     camera.lookAt(0, 0, 0);
     
     // Renderer
@@ -60,13 +69,13 @@ function createObjects() {
             
             // Create first object
             bue1 = model.clone();
-            bue1.position.set(-2, 10, -5);
+            bue1.position.set(bue1StartPos.x, bue1StartPos.y, bue1StartPos.z);
             bue1.scale.set(0.1, 0.1, 0.1);
             scene.add(bue1);
             
             // Create second object
             bue2 = model.clone();
-            bue2.position.set(2, 10, -5);
+            bue2.position.set(bue2StartPos.x, bue2StartPos.y, bue2StartPos.z);
             bue2.scale.set(0.1, 0.1, 0.1);
             scene.add(bue2);
 
@@ -121,7 +130,11 @@ function initCannon() {
 }
 
 function createPhysicsBodies() {
-    const boxShape = new CANNON.Box(new CANNON.Vec3(0.4, 0.25, 0.4));
+    const boxShape = new CANNON.Box(new CANNON.Vec3(
+        physicsBoxDimensions.width, 
+        physicsBoxDimensions.height, 
+        physicsBoxDimensions.depth
+    ));
     
     bue1Body = new CANNON.Body({
         mass: 1,
@@ -132,12 +145,16 @@ function createPhysicsBodies() {
         })
     });
 
-    bue1Body.position.set(-2, 10, -5);
+    bue1Body.position.set(bue1StartPos.x, bue1StartPos.y, bue1StartPos.z);
     bue1Body.angularDamping = 0.2;
     world.addBody(bue1Body);
     
     // Create visual representation of physics body
-    const physicsBox1 = new THREE.BoxGeometry(0.8, 0.5, 0.8); // 2x the boxShape dimensions
+    const physicsBox1 = new THREE.BoxGeometry(
+        physicsBoxDimensions.width * 2, 
+        physicsBoxDimensions.height * 2, 
+        physicsBoxDimensions.depth * 2
+    );
     const physicsMaterial1 = new THREE.MeshBasicMaterial({ 
         color: 0xff0000, 
         wireframe: true,
@@ -157,12 +174,16 @@ function createPhysicsBodies() {
         })
     });
     
-    bue2Body.position.set(2, 10, -5);
+    bue2Body.position.set(bue2StartPos.x, bue2StartPos.y, bue2StartPos.z);
     bue2Body.angularDamping = 0.2;
     world.addBody(bue2Body);
     
     // Create visual representation of physics body
-    const physicsBox2 = new THREE.BoxGeometry(0.8, 0.5, 0.8);
+    const physicsBox2 = new THREE.BoxGeometry(
+        physicsBoxDimensions.width * 2, 
+        physicsBoxDimensions.height * 2, 
+        physicsBoxDimensions.depth * 2
+    );
     const physicsMaterial2 = new THREE.MeshBasicMaterial({ 
         color: 0x00ff00, 
         wireframe: true,
