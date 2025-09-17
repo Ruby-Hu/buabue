@@ -19,9 +19,9 @@ const physicsBoxDimensions = {
 };
 
 // Initialize everything
-initThree();
-initCannon();
-animate();
+// initThree();
+// initCannon();
+// animate();
 
 function initThree() {
     // Scene
@@ -64,7 +64,7 @@ function initThree() {
     scene.add(light);
     
     // Event listeners
-    document.addEventListener('click', onMouseClick);
+    // document.addEventListener('click', onMouseClick);
     window.addEventListener('resize', onWindowResize);
 }
 
@@ -259,7 +259,7 @@ function animate() {
     requestAnimationFrame(animate);
 }
 
-function onMouseClick() {
+function dropModels() {
     world.gravity.set(0, -9.82, 0);
     // Apply random angular impulses to make cubes spin
     const randomX = (Math.random() - 0.5) * 3;
@@ -277,3 +277,5 @@ function onWindowResize() {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
+
+export {initThree, initCannon, animate, dropModels};
