@@ -72,7 +72,7 @@ function createObjects() {
     const loader = new GLTFLoader();
     
     loader.load(
-        './bue/bue.glb',
+        '/buabue/public/bue/bue.glb',
         function (gltf) {
             const model = gltf.scene;
 
