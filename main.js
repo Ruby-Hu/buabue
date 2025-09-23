@@ -7,7 +7,15 @@ let scene, camera, renderer;
 let bue1, bue2, floor;
 let world, bue1Body, bue2Body, floorBody;
 let modelsLoaded = false;
-let physicsVisuals = []; // Add this for physics visualization
+let physicsVisuals = [];
+
+// Face detection
+let isStable = { bue1: false, bue2: false };
+let stabilityTimer = { bue1: 0, bue2: 0 };
+const stabilityThreshold = 30; // frames of stillness required
+const movementThreshold = 0.01;
+let hasBeenDropped = false;
+let groundContactDetected = { bue1: false, bue2: false };
 
 const bue1StartPos = { x: 3, y: 8, z: 0 };
 const bue2StartPos = { x: -3, y: 8, z: 0 };
@@ -17,11 +25,6 @@ const physicsBoxDimensions = {
     height: 0.1,
     depth: 3.6
 };
-
-// Initialize everything
-// initThree();
-// initCannon();
-// animate();
 
 function initThree() {
     // Scene
@@ -64,7 +67,6 @@ function initThree() {
     scene.add(light);
     
     // Event listeners
-    // document.addEventListener('click', onMouseClick);
     window.addEventListener('resize', onWindowResize);
 }
 
@@ -88,16 +90,12 @@ function createObjects() {
             bue1 = model.clone();
             bue1.position.set(bue1StartPos.x, bue1StartPos.y, bue1StartPos.z);
             bue1.scale.set(0.1, 0.1, 0.1);
-            // bue1.castShadow = true; // Enable shadow casting
-            // bue1.receiveShadow = true; // Enable shadow receiving
             scene.add(bue1);
             
             // Create second object
             bue2 = model.clone();
             bue2.position.set(bue2StartPos.x, bue2StartPos.y, bue2StartPos.z);
             bue2.scale.set(0.1, 0.1, 0.1);
-            // bue2.castShadow = true; // Enable shadow casting
-            // bue2.receiveShadow = true; // Enable shadow receiving
             scene.add(bue2);
 
             modelsLoaded = true;
@@ -164,6 +162,27 @@ function initCannon() {
         { friction: 0.3, restitution: 0.7 }
     );
     world.addContactMaterial(cubeFloorContact);
+
+    // Add collision detection
+    world.addEventListener('beginContact', (event) => {
+        if (groundContactDetected.bue1 && groundContactDetected.bue2) return;
+        const { bodyA, bodyB } = event;
+        
+        // Check if either body is the floor
+        if (bodyA === floorBody || bodyB === floorBody) {
+            const otherBody = bodyA === floorBody ? bodyB : bodyA;
+            
+            if (otherBody === bue1Body) {
+                groundContactDetected.bue1 = true;
+            } else if (otherBody === bue2Body) {
+                groundContactDetected.bue2 = true;
+            }
+        }
+    });
+
+    if (groundContactDetected.bue1 && groundContactDetected.bue2) {
+        world.removeEventListener('beginContact', contactListener);
+    }
 }
 
 function createPhysicsBodies() {
@@ -193,7 +212,7 @@ function createPhysicsBodies() {
         physicsBoxDimensions.depth * 2
     );
     const physicsMaterial1 = new THREE.MeshBasicMaterial({ 
-        color: 0xff0000, 
+        color: 0xff0000, //red
         wireframe: true,
         transparent: true,
         opacity: 0.5
@@ -222,7 +241,7 @@ function createPhysicsBodies() {
         physicsBoxDimensions.depth * 2
     );
     const physicsMaterial2 = new THREE.MeshBasicMaterial({ 
-        color: 0x00ff00, 
+        color: 0x00ff00, //green
         wireframe: true,
         transparent: true,
         opacity: 0.5
@@ -232,11 +251,67 @@ function createPhysicsBodies() {
     scene.add(physicsVisual2);
 }
 
+function detectLandingSide(body, modelName) {
+    // Get the rotation matrix from the quaternion
+    const rotation = new THREE.Matrix4().makeRotationFromQuaternion(
+        new THREE.Quaternion(body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w)
+    );
+    
+    // Define the 6 face normal vectors in local space
+    const faces = {
+        'yang': new THREE.Vector3(0, 1, 0),
+        'yin': new THREE.Vector3(0, -1, 0),
+        // 'front': new THREE.Vector3(0, 0, 1),
+        // 'back': new THREE.Vector3(0, 0, -1),
+        // 'left': new THREE.Vector3(-1, 0, 0),
+        // 'right': new THREE.Vector3(1, 0, 0)
+    };
+    
+    // Transform face normals to world space and find which is pointing down most
+    let closestFace = 'unknown';
+    let maxDotProduct = -1;
+    
+    for (const [faceName, normal] of Object.entries(faces)) {
+        const worldNormal = normal.clone().transformDirection(rotation);
+        const dotProduct = worldNormal.dot(new THREE.Vector3(0, -1, 0)); // Compare with down vector
+        
+        if (dotProduct > maxDotProduct) {
+            maxDotProduct = dotProduct;
+            closestFace = faceName;
+        }
+    }
+    
+    console.log(`${modelName} landed on ${closestFace} side`);
+    return closestFace;
+}
+
+function checkStability(body, bodyName) {
+    const velocity = body.velocity.length();
+    const angularVelocity = body.angularVelocity.length();
+    
+    if (velocity < movementThreshold && angularVelocity < movementThreshold) {
+        stabilityTimer[bodyName]++;
+        
+        if (stabilityTimer[bodyName] >= stabilityThreshold && !isStable[bodyName]) {
+            isStable[bodyName] = true;
+            detectLandingSide(body, bodyName);
+        }
+    } else {
+        stabilityTimer[bodyName] = 0;
+        isStable[bodyName] = false;
+    }
+}
+
 function animate() {
     if (!modelsLoaded) return;
     
     // Step physics simulation
     world.step(1/60);
+
+    // Only check stability after models have been dropped and touched ground
+    // Check stability for both objects
+    checkStability(bue1Body, 'bue1');
+    checkStability(bue2Body, 'bue2');
     
     // Sync physics to visual objects
     bue1.position.copy(bue1Body.position);
@@ -254,13 +329,25 @@ function animate() {
     
     // Render
     renderer.render(scene, camera);
-    
+
     // Continue animation loop
     requestAnimationFrame(animate);
 }
 
 function dropModels() {
-    world.gravity.set(0, -9.82, 0);
+    // world.gravity.set(0, -9.82, 0);
+    world.gravity.set(0, -40, 0);
+
+    hasBeenDropped = true; // Add this line
+    
+    // Reset contact detection when dropping
+    groundContactDetected.bue1 = false;
+    groundContactDetected.bue2 = false;
+    isStable.bue1 = false;
+    isStable.bue2 = false;
+    stabilityTimer.bue1 = 0;
+    stabilityTimer.bue2 = 0;
+
     // Apply random angular impulses to make cubes spin
     const randomX = (Math.random() - 0.5) * 3;
     const randomY = (Math.random() - 0.5) * 3;
