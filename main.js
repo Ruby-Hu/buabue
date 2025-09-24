@@ -12,7 +12,7 @@ const bue1StartPos = { x: 3, y: 8, z: 0 };
 const bue2StartPos = { x: -3, y: 8, z: 0 };
 const physicsBoxDimensions = { 
     width: 2.4,
-    height: 0.1,
+    height: 0.3,
     depth: 3.6
 };
 
@@ -21,7 +21,7 @@ let isStable = { bue1: false, bue2: false };
 let isDropped = { bue1: false, bue2: false };
 let stabilityTimer = { bue1: 0, bue2: 0 };
 const stabilityThreshold = 30; // frames of stillness required
-const movementThreshold = 0.01;
+const movementThreshold = 0.09;
 
 function initThree() {
     // Scene
