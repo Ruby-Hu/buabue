@@ -8,23 +8,20 @@ let bue1, bue2, floor;
 let world, bue1Body, bue2Body, floorBody;
 let modelsLoaded = false;
 let physicsVisuals = [];
-
-// Face detection
-let isStable = { bue1: false, bue2: false };
-let stabilityTimer = { bue1: 0, bue2: 0 };
-const stabilityThreshold = 30; // frames of stillness required
-const movementThreshold = 0.01;
-let hasBeenDropped = false;
-let groundContactDetected = { bue1: false, bue2: false };
-
 const bue1StartPos = { x: 3, y: 8, z: 0 };
 const bue2StartPos = { x: -3, y: 8, z: 0 };
-
 const physicsBoxDimensions = { 
     width: 2.4,
     height: 0.1,
     depth: 3.6
 };
+
+// Face detection
+let isStable = { bue1: false, bue2: false };
+let isDropped = { bue1: false, bue2: false };
+let stabilityTimer = { bue1: 0, bue2: 0 };
+const stabilityThreshold = 30; // frames of stillness required
+const movementThreshold = 0.01;
 
 function initThree() {
     // Scene
@@ -162,27 +159,6 @@ function initCannon() {
         { friction: 0.3, restitution: 0.7 }
     );
     world.addContactMaterial(cubeFloorContact);
-
-    // Add collision detection
-    world.addEventListener('beginContact', (event) => {
-        if (groundContactDetected.bue1 && groundContactDetected.bue2) return;
-        const { bodyA, bodyB } = event;
-        
-        // Check if either body is the floor
-        if (bodyA === floorBody || bodyB === floorBody) {
-            const otherBody = bodyA === floorBody ? bodyB : bodyA;
-            
-            if (otherBody === bue1Body) {
-                groundContactDetected.bue1 = true;
-            } else if (otherBody === bue2Body) {
-                groundContactDetected.bue2 = true;
-            }
-        }
-    });
-
-    if (groundContactDetected.bue1 && groundContactDetected.bue2) {
-        world.removeEventListener('beginContact', contactListener);
-    }
 }
 
 function createPhysicsBodies() {
@@ -261,10 +237,6 @@ function detectLandingSide(body, modelName) {
     const faces = {
         'yang': new THREE.Vector3(0, 1, 0),
         'yin': new THREE.Vector3(0, -1, 0),
-        // 'front': new THREE.Vector3(0, 0, 1),
-        // 'back': new THREE.Vector3(0, 0, -1),
-        // 'left': new THREE.Vector3(-1, 0, 0),
-        // 'right': new THREE.Vector3(1, 0, 0)
     };
     
     // Transform face normals to world space and find which is pointing down most
@@ -282,6 +254,7 @@ function detectLandingSide(body, modelName) {
     }
     
     console.log(`${modelName} landed on ${closestFace} side`);
+    isDropped[modelName] = false;
     return closestFace;
 }
 
@@ -309,9 +282,10 @@ function animate() {
     world.step(1/60);
 
     // Only check stability after models have been dropped and touched ground
-    // Check stability for both objects
-    checkStability(bue1Body, 'bue1');
-    checkStability(bue2Body, 'bue2');
+    if (isDropped.bue1 || isDropped.bue2) {
+        checkStability(bue1Body, 'bue1');
+        checkStability(bue2Body, 'bue2');
+    }
     
     // Sync physics to visual objects
     bue1.position.copy(bue1Body.position);
@@ -336,17 +310,15 @@ function animate() {
 
 function dropModels() {
     // world.gravity.set(0, -9.82, 0);
-    world.gravity.set(0, -40, 0);
-
-    hasBeenDropped = true; // Add this line
+    world.gravity.set(0, -32, 0);
     
     // Reset contact detection when dropping
-    groundContactDetected.bue1 = false;
-    groundContactDetected.bue2 = false;
     isStable.bue1 = false;
     isStable.bue2 = false;
     stabilityTimer.bue1 = 0;
     stabilityTimer.bue2 = 0;
+    isDropped.bue1 = true;
+    isDropped.bue2 = true;
 
     // Apply random angular impulses to make cubes spin
     const randomX = (Math.random() - 0.5) * 3;
