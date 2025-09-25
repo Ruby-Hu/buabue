@@ -21,7 +21,7 @@ let isStable = { bue1: false, bue2: false };
 let isDropped = { bue1: false, bue2: false };
 let stabilityTimer = { bue1: 0, bue2: 0 };
 const stabilityThreshold = 30; // frames of stillness required
-const movementThreshold = 0.09;
+const movementThreshold = 0.5;
 
 function initThree() {
     // Scene
@@ -252,10 +252,34 @@ function detectLandingSide(body, modelName) {
             closestFace = faceName;
         }
     }
-    
+
     console.log(`${modelName} landed on ${closestFace} side`);
     isDropped[modelName] = false;
     return closestFace;
+}
+
+const results = { 
+    yes: ["yin", "yang"],
+    no: ["yin", "yin"], 
+    maybe: ["yang", "yang"]
+};
+let resultArr = [];
+
+function checkResult(arr, res) {
+    function arraysMatch(arr1, arr2) {
+        if (arr1.length !== arr2.length) return false;
+        const sorted1 = [...arr1].sort();
+        const sorted2 = [...arr2].sort();
+        return sorted1.every((val, index) => val === sorted2[index]);
+    }
+    
+    for (const [key, expectedArray] of Object.entries(res)) {
+        if (arraysMatch(arr, expectedArray)) {
+            return key;
+        }
+    }
+    
+    return null;
 }
 
 function checkStability(body, bodyName) {
@@ -267,7 +291,11 @@ function checkStability(body, bodyName) {
         
         if (stabilityTimer[bodyName] >= stabilityThreshold && !isStable[bodyName]) {
             isStable[bodyName] = true;
-            detectLandingSide(body, bodyName);
+            resultArr.push(detectLandingSide(body, bodyName));
+
+            if (resultArr.length > 1) {
+                console.log(checkResult(resultArr, results));
+            }
         }
     } else {
         stabilityTimer[bodyName] = 0;
@@ -319,6 +347,7 @@ function dropModels() {
     stabilityTimer.bue2 = 0;
     isDropped.bue1 = true;
     isDropped.bue2 = true;
+    
 
     // Apply random angular impulses to make cubes spin
     const randomX = (Math.random() - 0.5) * 3;
