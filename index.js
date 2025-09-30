@@ -1,8 +1,8 @@
-import { initThree, initCannon, animate, dropModels } from "./main";
-import { cast } from "./UI";
+import { initThree, initCannon, animate } from "./main";
+import { initUI } from "./UI";
 
 
 initThree();
 initCannon();
-cast(dropModels);
+initUI();
 animate();

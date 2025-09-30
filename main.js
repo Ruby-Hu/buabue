@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { showResult } from './UI';
 
 // Global variables
 let scene, camera, renderer;
@@ -282,6 +283,8 @@ function checkResult(arr, res) {
     return null;
 }
 
+let currentResult = null;
+
 function checkStability(body, bodyName) {
     const velocity = body.velocity.length();
     const angularVelocity = body.angularVelocity.length();
@@ -294,7 +297,10 @@ function checkStability(body, bodyName) {
             resultArr.push(detectLandingSide(body, bodyName));
 
             if (resultArr.length > 1) {
-                console.log(checkResult(resultArr, results));
+                currentResult = checkResult(resultArr, results); // Store result
+                // return currentResult;
+                showResult(currentResult);
+                
             }
         }
     } else {
@@ -302,6 +308,7 @@ function checkStability(body, bodyName) {
         isStable[bodyName] = false;
     }
 }
+
 
 function animate() {
     if (!modelsLoaded) return;
