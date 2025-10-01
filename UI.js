@@ -6,6 +6,11 @@ function languageSwitch() {
 
 function information() {
     //the information button, no language difference
+    const infoBtn = document.createElement("i");
+    infoBtn.classList.add("fa-regular");
+    infoBtn.classList.add("fa-circle-question");
+    infoBtn.classList.add("info-btn");
+    document.body.appendChild(infoBtn);
 }
 
 function cast(castingFunction) {
@@ -33,7 +38,7 @@ function showResult(result) {
         // If we get here, result exists
         const resultDisplay = document.createElement("p");
         resultDisplay.classList.add("display-msg");
-        resultDisplay.textContent = result;
+        resultDisplay.textContent = "\\\\" + result + "//";
         document.body.appendChild(resultDisplay);
         
     } catch (error) {
@@ -48,6 +53,7 @@ function showResult(result) {
 function initUI() {
     //putting the whole ui display together and dynamically control html
     cast(dropModels);
+    information();
 }
 
 export {initUI, showResult}

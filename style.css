@@ -9,18 +9,86 @@ body {
 }
 
 .cast-btn {
-    position: absolute;
-    top: 20px;
-    left: 20px;
+    position: fixed;
+    bottom: 15vh; /* Use viewport units */
+    left: 50%;
     z-index: 1000;
-    padding: 10px 20px;
-    font-size: 16px;
+    transform: translateX(-50%);
+    padding: clamp(1rem, 2vw, 2rem) clamp(3rem, 5vw, 6rem); /* Responsive padding */
+    font-size: clamp(1.5rem, 3vw, 3rem); /* Responsive font size */
+    border-radius: 5rem;
+    border: none;
+    cursor: pointer;
+    background-color: white;
+    white-space: nowrap; /* Prevent text wrapping */
+}
+
+.cast-btn:hover {
+    background-color: #b0b0b0;
 }
 
 .display-msg {
-    position: absolute;
-    top: 20px;
-    right: 20px;
+    position: fixed;
+    top: 10vh; /* Use viewport units instead of rem */
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 900;
-    font-size: medium;
+    font-size: clamp(2rem, 5vw, 4rem); /* Scales between 2rem and 4rem */
+    color: white;
+    text-align: center;
+    max-width: 90vw; /* Prevent overflow on small screens */
+}
+
+.info-btn {
+    position: fixed; /* Changed from absolute */
+    bottom: 2vh; /* Responsive viewport unit */
+    right: 2vw; /* Responsive viewport unit */
+    z-index: 900;
+    font-size: clamp(2rem, 4vw, 4rem); /* Scales between 2rem and 4rem */
+    padding: clamp(0.5rem, 1vw, 1rem); /* Responsive padding */
+    color: white;
+    cursor: pointer;
+    background: none;
+    border: none;
+}
+
+/* Tablet and larger screens */
+@media (min-width: 768px) {
+    .display-msg {
+        top: 8vh;
+        font-size: 3.5rem;
+    }
+    
+    .cast-btn {
+        bottom: 12vh;
+        padding: 1.5rem 5rem;
+        font-size: 2.5rem;
+    }
+
+    .info-btn {
+        bottom: 2vh;
+        right: 2vw;
+        font-size: 3.5rem;
+        padding: 0.8rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .display-msg {
+        top: 10vh;
+        font-size: 4rem;
+    }
+    
+    .cast-btn {
+        bottom: 10vh;
+        padding: 2rem 6rem;
+        font-size: 3rem;
+    }
+
+    .info-btn {
+        bottom: 2vh;
+        right: 2vw;
+        font-size: 4rem;
+        padding: 1rem;
+    }
 }
